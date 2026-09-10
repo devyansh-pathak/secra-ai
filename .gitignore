@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+logs/
+.env
+.vscode/
+*.db
+vector_db/
+
+knowledge_base/uploads/
+sample.txt
+finance.txt

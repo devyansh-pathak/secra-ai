@@ -1,0 +1,12 @@
+sqlalchemy==2.0.35
+pypdf==4.3.1
+faiss-cpu==1.8.0.post1
+sentence-transformers==3.1.1
+python-docx==1.1.2
+pymupdf
+pillow
+pdf2image
+pytesseract
+
+requests
+ollama

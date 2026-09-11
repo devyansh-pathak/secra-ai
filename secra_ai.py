@@ -7,7 +7,7 @@ Public functions:
 
 Both functions work with local files and local Ollama.
 """
-
+from agno.tools import tool
 from pathlib import Path
 import re
 import requests
@@ -22,7 +22,7 @@ from rag.retrieval import EmbeddingService, Reranker, RetrievedChunk
 
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "llama3.2"
+OLLAMA_MODEL = "llama3.1:8b "
 
 
 # ---------------------------------------------------------
@@ -66,8 +66,6 @@ Rules:
 1. Do not use outside knowledge.
 2. Do not guess.
 3. Do not invent information.
-4. If the answer cannot be found in the context, respond exactly:
-   Information not found in provided documents.
 
 Context:
 ----------------
@@ -108,7 +106,7 @@ def _clean_answer(text):
 # ---------------------------------------------------------
 # PDF
 # ---------------------------------------------------------
-
+@tool
 def ask_pdf(query, pdf_path):
     """
     Ask a question about a local PDF.
@@ -376,7 +374,7 @@ def ask_pdf(query, pdf_path):
 # ---------------------------------------------------------
 # PHOTO
 # ---------------------------------------------------------
-
+@tool
 def ask_photo(query, photo_path):
     """
     Ask a question about text present in a local image.
@@ -410,7 +408,7 @@ def ask_photo(query, photo_path):
     # Direct OCR request
     # -----------------------------------------------------
 
-    query_lower = query.lower()
+    """query_lower = query.lower()
 
     direct_text_request = any(
         phrase in query_lower
@@ -441,8 +439,10 @@ def ask_photo(query, photo_path):
         answer = _ask_ollama(
             query,
             context,
-        )
+        )"""
+    context = ocr_text
 
+    answer = _ask_ollama(query,context)
     answer = _clean_answer(answer)
 
     return {
@@ -462,3 +462,5 @@ def ask_photo(query, photo_path):
         "ocr_engine": "Tesseract",
         "ollama_model": OLLAMA_MODEL,
     }
+
+

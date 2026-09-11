@@ -164,7 +164,7 @@ Answer:
     }
 
 
-
+from config import MODEL_ID
 class OllamaLLM:
 
     def generate(self, prompt: str):
@@ -172,7 +172,7 @@ class OllamaLLM:
         response = requests.post(
             OLLAMA_URL,
             json={
-                "model": MODEL_NAME,
+                "model": MODEL_ID,
                 "prompt": prompt,
                 "stream": False
             }

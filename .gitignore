@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+
+# Databases & local storage
+*.db
+*.sqlite
+*.sqlite3
+**/uploads/*
+!**/uploads/.gitkeep
+
+# Environment, venv & logs
+.env
+.venv/
+env/
+venv/
+logs/
+dist/
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

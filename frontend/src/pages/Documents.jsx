@@ -20,16 +20,21 @@ export default function Documents() {
   }, [])
 
   const filtered = docs.filter(d =>
-    d.name.toLowerCase().includes(query.toLowerCase()) ||
-    d.type.toLowerCase().includes(query.toLowerCase())
-  )
+  (d.name || '').toLowerCase().includes(query.toLowerCase()) ||
+  (d.type || '').toLowerCase().includes(query.toLowerCase())
+)
   // REPLACE WITH
-  const handleDelete = (id) => {
-    apiDelete(id).catch(() => { })
-    setDocs(p => p.filter(d => d.id !== id))
+  const handleDelete = async (id) => {
+    try {
+      await apiDelete(id)
+      setDocs(p => p.filter(d => d.id !== id))
+    } catch (error) {
+      console.error('Failed to delete document:', error)
+    }
   }
   const handleUploaded = (doc) => {
-    setDocs(p => [{ ...doc, id: Date.now() }, ...p])
+    if (!doc) return
+    setDocs(p => [doc, ...p])
   }
 
   return (

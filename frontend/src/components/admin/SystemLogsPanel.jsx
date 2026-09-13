@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { MoreHorizontal } from 'lucide-react'
+import { getSystemLogs } from '../../services/api'
 
 const STATIC = [
   { key:'Vector Query',      val:'0.012s',    ok:false },

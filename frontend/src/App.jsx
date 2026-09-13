@@ -8,6 +8,7 @@ import Documents from './pages/Documents'
 import Settings from './pages/Settings'
 import AuditLog from './pages/AuditLog'
 import SystemHealth from './pages/SystemHealth'
+import { useState } from 'react'
 
 function ProtectedLayout({ children }) {
   const { user } = useAuth()
@@ -24,15 +25,24 @@ function ProtectedLayout({ children }) {
 
 function AppRoutes() {
   const { user } = useAuth()
+
+  // ← lifted state so chat doesn't reset on page switch
+  const [messages, setMessages]         = useState([])
+  const [convList, setConvList]         = useState([])
+  const [convMessages, setConvMessages] = useState({})
+  const [activeConv, setActiveConv]     = useState(null)
+
+  const chatProps = { messages, setMessages, convList, setConvList, convMessages, setConvMessages, activeConv, setActiveConv }
+
   return (
     <Routes>
-      <Route path="/login"    element={user ? <Navigate to="/chat" /> : <Login />} />
-      <Route path="/chat"     element={<ProtectedLayout><Chat /></ProtectedLayout>} />
-      <Route path="/documents"element={<ProtectedLayout><Documents /></ProtectedLayout>} />
-      <Route path="/settings" element={<ProtectedLayout><Settings /></ProtectedLayout>} />
-      <Route path="/audit"    element={<ProtectedLayout><AuditLog /></ProtectedLayout>} />
-      <Route path="/health"   element={<ProtectedLayout><SystemHealth /></ProtectedLayout>} />
-      <Route path="*"         element={<Navigate to="/login" />} />
+      <Route path="/login"     element={user ? <Navigate to="/chat" /> : <Login />} />
+      <Route path="/chat"      element={<ProtectedLayout><Chat {...chatProps} /></ProtectedLayout>} />
+      <Route path="/documents" element={<ProtectedLayout><Documents /></ProtectedLayout>} />
+      <Route path="/settings"  element={<ProtectedLayout><Settings /></ProtectedLayout>} />
+      <Route path="/audit"     element={<ProtectedLayout><AuditLog /></ProtectedLayout>} />
+      <Route path="/health"    element={<ProtectedLayout><SystemHealth /></ProtectedLayout>} />
+      <Route path="*"          element={<Navigate to="/login" />} />
     </Routes>
   )
 }

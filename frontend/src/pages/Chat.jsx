@@ -4,30 +4,27 @@ import { useAuth } from '../context/AuthContext'
 import Sidebar from '../components/layout/Sidebar'
 import { UserMessage, AiMessage, ThinkingMessage, ImageAnalysisMessage } from '../components/chat/ChatMessage'
 import DocumentUpload from '../components/documents/DocumentUpload'
-import { MOCK_RESPONSES } from '../data/mockData'
-import { sendMessage as apiSend } from '../services/api'
+import {
+  sendMessage as apiSend,
+} from '../services/api'
 
 const QUICK = [
-  { label: 'Ask about a document',   q: 'Ask about a document'          },
-  { label: 'Analyze equipment image', q: 'Analyze equipment image'       },
-  { label: 'Create a checklist',     q: 'Create a maintenance checklist' },
-  { label: 'Find an SOP',            q: 'Find an SOP'                    },
+  { label: 'Ask about a document', q: 'Ask about a document' },
+  { label: 'Analyze equipment image', q: 'Analyze equipment image' },
+  { label: 'Create a checklist', q: 'Create a maintenance checklist' },
+  { label: 'Find an SOP', q: 'Find an SOP' },
 ]
 
-export default function Chat() {
+export default function Chat({ messages, setMessages, convList, setConvList, convMessages, setConvMessages, activeConv, setActiveConv }) {
   const { user } = useAuth()
-  const [messages, setMessages]     = useState([])
-  const [text, setText]             = useState('')
-  const [thinking, setThinking]     = useState(false)
-  const [activeConv, setActiveConv] = useState(null)
+  const [text, setText] = useState('')
+  const [thinking, setThinking] = useState(false)
   const [uploadOpen, setUploadOpen] = useState(false)
   const [pendingImg, setPendingImg] = useState(null)
-  const [convList, setConvList]     = useState([])
-  const [convMessages, setConvMessages] = useState({})
-  const taRef     = useRef()
+  const taRef = useRef()
   const bottomRef = useRef()
 
-  const hour     = new Date().getHours()
+  const hour = new Date().getHours()
   const greeting = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening'
 
   // scroll to bottom on new message
@@ -41,136 +38,205 @@ export default function Chat() {
     fetch(`${import.meta.env.VITE_API_URL}/api/v1/conversations/${user.id}`)
       .then(r => r.json())
       .then(data => { if (data.length) setConvList(data) })
-      .catch(() => {})
+      .catch(() => { })
   }, [user?.id])
 
- const startConv = (id) => {
-  setActiveConv(id)
-  // load stored messages for this conversation
-  const saved = convMessages[id]
-  if (saved && saved.length > 0) {
-    setMessages(saved)
-  } else {
-    setMessages([])
+  const startConv = (id) => {
+    setActiveConv(id)
+    // load stored messages for this conversation
+    const saved = convMessages[id]
+    if (saved && saved.length > 0) {
+      setMessages(saved)
+    } else {
+      setMessages([])
+    }
   }
-}
 
   const newChat = () => {
-  // save current messages before clearing
-  if (activeConv && messages.length > 0) {
-    setConvMessages(p => ({ ...p, [activeConv]: messages }))
+    // save current messages before clearing
+    if (activeConv && messages.length > 0) {
+      setConvMessages(p => ({ ...p, [activeConv]: messages }))
+    }
+    setMessages([])
+    setActiveConv(null)
+    setText('')
+    setPendingImg(null)
   }
-  setMessages([])
-  setActiveConv(null)
-  setText('')
-  setPendingImg(null)
-}
 
   const send = async () => {
     const t = text.trim()
     if (!t && !pendingImg) return
+
     const wasImg = !!pendingImg
 
-    setMessages(p => [...p, {
+    // Create conversation ID BEFORE making API call
+    const convId = activeConv ?? Date.now()
+
+    const userMessage = {
       type: 'user',
       text: t || 'Please analyze this equipment image.',
-      imageUrl: pendingImg
-    }])
-    setText(''); setPendingImg(null)
+      imageUrl: pendingImg,
+    }
+
+    setMessages(p => [...p, userMessage])
+    setText('')
+    setPendingImg(null)
+
     if (taRef.current) {
       taRef.current.style.height = 'auto'
-      taRef.current.placeholder  = 'Ask Secra AI anything about refinery operations…'
+      taRef.current.placeholder =
+        'Ask Secra AI anything about refinery operations…'
     }
 
-    // add to sidebar + save to backend on first message of new chat
-        if (messages.length === 0 && t) {
-      const newId = Date.now()
-      setConvList(p => [{ id: newId, title: t.slice(0, 42), group: 'Today' }, ...p])
-      setActiveConv(newId)
-      // save the user message immediately
+    // New conversation
+    if (!activeConv && t) {
+      setActiveConv(convId)
+
+      setConvList(p => [
+        {
+          id: convId,
+          title: t.slice(0, 42),
+          group: 'Today',
+        },
+        ...p,
+      ])
+
       setConvMessages(prev => ({
         ...prev,
-        [newId]: [{ type: 'user', text: t }]
+        [convId]: [userMessage],
       }))
 
-      // save to backend
-      fetch(`${import.meta.env.VITE_API_URL}/api/v1/conversations`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          user_id:    user?.id || 'anonymous',
-          session_id: String(newId),
-          title:      t.slice(0, 42),
-        })
-      }).catch(() => {})
-    }
-
-  const saveToHistory = (newMsg) => {
-      setMessages(p => {
-        const updated = [...p, newMsg]
-        setConvMessages(prev => ({ ...prev, [activeConv]: updated }))
-        return updated
+      // Save conversation in backend
+      fetch(
+        `${import.meta.env.VITE_API_URL}/api/v1/conversations`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            user_id: user?.id || 'anonymous',
+            session_id: String(convId),
+            title: t.slice(0, 42),
+          }),
+        }
+      ).catch(error => {
+        console.error('Failed to create conversation:', error)
       })
     }
 
     setThinking(true)
+
     try {
-      const res = await apiSend(t, user?.id || 'anonymous', String(activeConv ?? 'default'))
+      // IMPORTANT:
+      // use convId instead of activeConv
+      const res = await apiSend(
+        t,
+        user?.id || 'anonymous',
+        String(convId)
+      )
+
       setThinking(false)
-      if (wasImg) {
-        saveToHistory({ type: 'img-analysis' })
-      } else {
-        saveToHistory({
+
+      const aiMessage = wasImg
+        ? {
+          type: 'img-analysis',
+        }
+        : {
           type: 'ai',
           response: {
-            text:    res.answer,
+            text: res.answer,
             sources: res.sources || [],
-            safety:  false,
-          }
-        })
-      }
-    } catch {
+            safety: false,
+          },
+        }
+
+      setMessages(prev => {
+        const updated = [...prev, aiMessage]
+
+        setConvMessages(history => ({
+          ...history,
+          [convId]: updated,
+        }))
+
+        return updated
+      })
+    } catch (error) {
+      console.error('Chat API error:', error)
+
       setThinking(false)
-      saveToHistory({
+
+      const errorMessage = {
         type: 'ai',
         response: {
-          text:    '⚠ Could not reach the backend. Make sure server is running on port 8000.',
+          text:
+            '⚠ Could not reach the backend. Make sure the server is running on port 8000.',
           sources: [],
-          safety:  false,
-        }
+          safety: false,
+        },
+      }
+
+      setMessages(prev => {
+        const updated = [...prev, errorMessage]
+
+        setConvMessages(history => ({
+          ...history,
+          [convId]: updated,
+        }))
+
+        return updated
       })
     }
-}
+  }
 
-  const onKey   = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }
+  const onKey = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }
   const onInput = (e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px' }
 
-  const handleImg = (e) => {
+  const handleImg = async (e) => {
     const f = e.target.files[0]; if (!f) return
+    // show preview
     const r = new FileReader()
     r.onload = ev => {
       setPendingImg(ev.target.result)
       if (taRef.current) taRef.current.placeholder = 'Image attached — add a note or press Send…'
       taRef.current?.focus()
     }
-    r.readAsDataURL(f); e.target.value = ''
+    r.readAsDataURL(f)
+
+    // also upload to backend to get server path
+    try {
+      const form = new FormData()
+      form.append('file', f)
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/knowledge/ingest`, {
+        method: 'POST',
+        body: form
+      })
+      const data = await res.json()
+      // store server path so send() can include it in message
+      setText(`Analyze this image: ${data.path}`)
+    } catch {
+      setText(`Analyze this image: knowledge_base/uploads/${f.name}`)
+    }
+    e.target.value = ''
   }
 
   const handleFile = async (e) => {
-  const f = e.target.files[0]; if (!f) return
-  // upload to backend first, get the server path back
-  try {
-    const form = new FormData()
-    form.append('file', f)
-    const res  = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/knowledge/ingest`, { method:'POST', body: form })
-    const data = await res.json()
-    // tell the agent the exact server path so ask_pdf can find it
-    setText(`Summarize this PDF: ${data.path}`)
-  } catch {
-    setText(`I've uploaded "${f.name}". Please analyze it.`)
+    const f = e.target.files[0]; if (!f) return
+    try {
+      const form = new FormData()
+      form.append('file', f)
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/knowledge/ingest`, {
+        method: 'POST',
+        body: form
+      })
+      const data = await res.json()
+      // send the exact server path so ask_pdf can find it
+      setText(`Summarize this PDF: ${data.path}`)
+    } catch {
+      setText(`Summarize this document: knowledge_base/uploads/${f.name}`)
+    }
+    taRef.current?.focus(); e.target.value = ''
   }
-  taRef.current?.focus(); e.target.value = ''
-}
 
   const isEmpty = messages.length === 0
 
@@ -209,8 +275,8 @@ export default function Chat() {
             <div className="flex flex-col gap-5 px-[max(16px,calc(50%-400px))] py-6">
               {messages.map((m, i) => (
                 <div key={i}>
-                  {m.type === 'user'         && <UserMessage text={m.text} imageUrl={m.imageUrl} />}
-                  {m.type === 'ai'           && <AiMessage response={m.response} />}
+                  {m.type === 'user' && <UserMessage text={m.text} imageUrl={m.imageUrl} />}
+                  {m.type === 'ai' && <AiMessage response={m.response} />}
                   {m.type === 'img-analysis' && <ImageAnalysisMessage />}
                 </div>
               ))}
@@ -244,8 +310,8 @@ export default function Chat() {
             />
             <div className="flex items-center gap-1 flex-shrink-0">
               {[
-                { icon: Paperclip, title: 'Attach file',  accept: '.pdf,.docx,.txt,image/*', onChange: handleFile },
-                { icon: Image,     title: 'Upload image', accept: 'image/*',                  onChange: handleImg  },
+                { icon: Paperclip, title: 'Attach file', accept: '.pdf,.docx,.txt,image/*', onChange: handleFile },
+                { icon: Image, title: 'Upload image', accept: 'image/*', onChange: handleImg },
               ].map(({ icon: Icon, title, accept, onChange }) => (
                 <label key={title} title={title} className="p-1.5 rounded cursor-pointer text-tx-4 hover:text-amb hover:bg-card3 transition-colors">
                   <input type="file" className="hidden" accept={accept} onChange={onChange} />

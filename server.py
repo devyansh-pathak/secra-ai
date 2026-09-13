@@ -24,7 +24,10 @@ app = FastAPI(title="SECra AI Backend")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://solid-space-disco-97457x9pxq4vhx95-5173.app.github.dev",
+        "http://localhost:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

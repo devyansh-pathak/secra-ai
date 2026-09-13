@@ -125,5 +125,5 @@ def scan_pdf_links(pdf_path):
     return results
 
 
-result=scan_pdf_links(r"C:\Devyansh\VS\secra\risky_links_test.pdf")
-print(result)
+# result=scan_pdf_links("test")
+# print(result)

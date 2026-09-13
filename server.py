@@ -53,6 +53,34 @@ def push_log(key, val, ok=False):
         "ts":  datetime.datetime.utcnow().strftime("%H:%M:%S")
     })
 
+def _metric(m, field):
+    """Read a metrics field whether m.metrics is a dict-of-lists or an object with plain attrs."""
+    v = m.get(field) if isinstance(m, dict) else getattr(m, field, None)
+    if isinstance(v, list):
+        return sum(v) if v else None
+    return v
+
+def push_run_metrics(response):
+    """Push Tokens / Duration / Tokens per second / Time to first token from an Agno run response."""
+    m = getattr(response, "metrics", None)
+    if not m:
+        return
+    input_tokens  = _metric(m, "input_tokens")
+    output_tokens = _metric(m, "output_tokens")
+    total_tokens  = _metric(m, "total_tokens")
+    duration      = _metric(m, "duration")
+    ttft          = _metric(m, "time_to_first_token")
+
+    if input_tokens is not None or output_tokens is not None or total_tokens is not None:
+        push_log("Tokens", f"{input_tokens}/{output_tokens}/{total_tokens}", ok=True)
+    if duration is not None:
+        push_log("Duration", f"{duration:.4f}s", ok=True)
+        if total_tokens:
+            push_log("Tokens per second", f"{total_tokens / duration:.4f} tokens/s", ok=True)
+    if ttft is not None:
+        push_log("Time to first token", f"{ttft:.4f}s", ok=True)
+
+
 # ── Conversation helpers ──────────────────────────────────
 def load_convs():
     try:
@@ -155,6 +183,10 @@ def chat(req: ChatRequest):
             user_id=req.user_id,
             session_id=req.session_id,
         )
+
+        # ── Real token/timing metrics from the Agno run ──
+        push_run_metrics(response)
+        # ──────────────────────────────────────────────────
 
         answer = ""
         if hasattr(response, "content"):

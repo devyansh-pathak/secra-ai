@@ -1,29 +1,37 @@
 import { useState, useEffect } from 'react'
 import { MoreHorizontal } from 'lucide-react'
 
-const LOGS = [
-  { key: 'Vector Query',      val: '0.012s',    ok: false },
-  { key: 'API Call',          val: 'Successful', ok: true  },
-  { key: 'Model Status',      val: 'Active',     ok: true  },
-  { key: 'Context Retrieved', val: '24 chunks',  ok: false },
-  { key: 'Agent',             val: 'Ready',      ok: true  },
-  { key: 'Security Check',    val: 'Passed',     ok: true  },
-  { key: 'Error',             val: 'None',       ok: false },
+const STATIC = [
+  { key:'Vector Query',      val:'0.012s',    ok:false },
+  { key:'API Call',          val:'Successful', ok:true  },
+  { key:'Model Status',      val:'Active',     ok:true  },
+  { key:'Context Retrieved', val:'24 chunks',  ok:false },
+  { key:'Agent',             val:'Ready',      ok:true  },
+  { key:'Security Check',    val:'Passed',     ok:true  },
+  { key:'Error',             val:'None',       ok:false },
 ]
 
-function ts() {
-  const d = new Date()
-  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`
-}
-
 export default function SystemLogsPanel() {
-  const [time, setTime]       = useState(ts)
-  const [menuOpen, setMenu]   = useState(false)
-  useEffect(() => { const iv = setInterval(() => setTime(ts()), 30000); return () => clearInterval(iv) }, [])
+  const [logs, setLogs]     = useState([])
+  const [time, setTime]     = useState(() => new Date().toLocaleTimeString())
+  const [menuOpen, setMenu] = useState(false)
+
+  useEffect(() => {
+    const fetchLogs = () => {
+      fetch(`${import.meta.env.VITE_API_URL}/api/v1/admin/logs`)
+        .then(r => r.json())
+        .then(data => { if (data.length) { setLogs(data); setTime(new Date().toLocaleTimeString()) } })
+        .catch(() => {})
+    }
+    fetchLogs()
+    const iv = setInterval(fetchLogs, 5000)
+    return () => clearInterval(iv)
+  }, [])
+
+  const display = logs.length > 0 ? logs : STATIC
 
   return (
     <div className="rounded border border-line bg-bg overflow-hidden">
-      {/* head */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-line">
         <span className="font-mono text-[9px] font-semibold tracking-widest uppercase text-tx-3">System Logs</span>
         <div className="relative">
@@ -43,13 +51,11 @@ export default function SystemLogsPanel() {
           )}
         </div>
       </div>
-      {/* timestamp */}
       <div className="px-3 pt-2 pb-0.5">
         <span className="font-mono text-[9px] text-tx-4">{time}</span>
       </div>
-      {/* rows */}
       <div className="log-scroll overflow-y-auto max-h-[144px] pb-1.5">
-        {LOGS.map((l, i) => (
+        {display.map((l, i) => (
           <div key={i} className="flex items-center justify-between px-3 py-[5px] hover:bg-card2 transition-colors">
             <span className="font-mono text-[10px] text-tx-3 truncate mr-2">{l.key}</span>
             <span className={`font-mono text-[10px] flex-shrink-0 ${l.ok ? 'text-amb' : 'text-tx-2'}`}>{l.val}</span>

@@ -1,12 +1,12 @@
 import { useNavigate } from 'react-router-dom'
 import { Plus, HelpCircle, Settings } from 'lucide-react'
-import { MOCK_CONVERSATIONS } from '../../data/mockData'
 import SystemLogsPanel from '../admin/SystemLogsPanel'
 
 const GROUPS = ['Today', 'Yesterday', 'Earlier']
 
-export default function Sidebar({ activeConv, onSelectConv, onNewChat }) {
+export default function Sidebar({ activeConv, onSelectConv, onNewChat, conversations = [] }) {
   const navigate = useNavigate()
+
   return (
     <aside className="w-[220px] flex-shrink-0 flex flex-col overflow-hidden bg-card border-r border-line">
       {/* New Chat */}
@@ -21,7 +21,7 @@ export default function Sidebar({ activeConv, onSelectConv, onNewChat }) {
       {/* Conversations */}
       <div className="flex-1 overflow-y-auto min-h-0">
         {GROUPS.map(group => {
-          const convs = MOCK_CONVERSATIONS.filter(c => c.group === group)
+          const convs = conversations.filter(c => c.group === group)
           if (!convs.length) return null
           return (
             <div key={group}>

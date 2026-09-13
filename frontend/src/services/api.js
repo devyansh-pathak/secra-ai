@@ -1,44 +1,38 @@
-// services/api.js
-// All backend API calls go here.
-// Currently returns mock data; swap BASE_URL and uncomment fetch calls when backend is ready.
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
-const BASE_URL = '/api/v1'  // TODO: set to real backend URL
-
-// ── AUTH ──────────────────────────────────────────────────
-export const login = async (userId, password) => {
-  // TODO: return fetch(`${BASE_URL}/auth/login`, { method:'POST', body: JSON.stringify({userId,password}) }).then(r=>r.json())
-  return { success: true, user: { name:'Pari', role:'Engineer', id: userId } }
+export const sendMessage = async (message, userId = 'anonymous', sessionId = 'default') => {
+  const res = await fetch(`${BASE_URL}/api/v1/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, user_id: userId, session_id: sessionId }),
+  })
+  if (!res.ok) throw new Error(`Chat failed: ${res.status}`)
+  return res.json()
 }
 
-export const logout = async () => {
-  // TODO: return fetch(`${BASE_URL}/auth/logout`, { method:'POST' })
-  return { success: true }
-}
-
-// ── CHAT ──────────────────────────────────────────────────
-export const sendMessage = async (message, conversationId, imageBase64 = null) => {
-  // TODO: return fetch(`${BASE_URL}/chat`, { method:'POST', body: JSON.stringify({message,conversationId,imageBase64}) }).then(r=>r.json())
-  return null // mock handled in component
-}
-
-// ── DOCUMENTS ─────────────────────────────────────────────
 export const getDocuments = async () => {
-  // TODO: return fetch(`${BASE_URL}/knowledge`).then(r=>r.json())
-  return []
+  const res = await fetch(`${BASE_URL}/api/v1/knowledge`)
+  if (!res.ok) throw new Error('Failed to fetch documents')
+  return res.json()
 }
 
 export const uploadDocument = async (file) => {
-  // TODO:
-  // const form = new FormData(); form.append('file', file)
-  // return fetch(`${BASE_URL}/knowledge/ingest`, { method:'POST', body: form }).then(r=>r.json())
-  return { success: true, id: Date.now() }
+  const form = new FormData()
+  form.append('file', file)
+  const res = await fetch(`${BASE_URL}/api/v1/knowledge/ingest`, {
+    method: 'POST',
+    body: form,
+  })
+  if (!res.ok) throw new Error('Upload failed')
+  return res.json()
 }
 
 export const deleteDocument = async (id) => {
-  // TODO: return fetch(`${BASE_URL}/knowledge/${id}`, { method:'DELETE' })
-  return { success: true }
+  const res = await fetch(`${BASE_URL}/api/v1/knowledge/${id}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error('Delete failed')
+  return res.json()
 }
 
-// ── ADMIN ─────────────────────────────────────────────────
-export const getAuditLogs  = async () => { return [] }
-export const getSystemHealth = async () => { return {} }
+export const getAuditLogs    = async () => { const res = await fetch(`${BASE_URL}/api/v1/admin/audit`);  return res.ok ? res.json() : [] }
+export const getSystemHealth = async () => { const res = await fetch(`${BASE_URL}/api/v1/admin/health`); return res.ok ? res.json() : {} }
+export const checkBackendOnline = async () => { try { const res = await fetch(`${BASE_URL}/health`); return res.ok } catch { return false } }

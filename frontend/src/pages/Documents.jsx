@@ -3,19 +3,34 @@ import { FileText, Plus, Search } from 'lucide-react'
 import DocumentCard from '../components/documents/DocumentCard'
 import DocumentUpload from '../components/documents/DocumentUpload'
 import EmptyState from '../components/common/EmptyState'
-import { MOCK_DOCS } from '../data/mockData'
+import { useEffect } from 'react'
+import { getDocuments, deleteDocument as apiDelete, uploadDocument as apiUpload } from '../services/api'
 
 export default function Documents() {
-  const [docs, setDocs]     = useState(MOCK_DOCS)
-  const [query, setQuery]   = useState('')
-  const [open, setOpen]     = useState(false)
+  // REPLACE WITH
+const [docs, setDocs]     = useState([])
+const [query, setQuery]   = useState('')
+const [open, setOpen]     = useState(false)
+const [loading, setLoading] = useState(true)
+
+useEffect(() => {
+  getDocuments()
+    .then(data => { setDocs(data); setLoading(false) })
+    .catch(() => setLoading(false))
+}, [])
 
   const filtered = docs.filter(d =>
     d.name.toLowerCase().includes(query.toLowerCase()) ||
     d.type.toLowerCase().includes(query.toLowerCase())
   )
-  const handleDelete   = (id) => setDocs(p => p.filter(d => d.id !== id))
-  const handleUploaded = (doc) => setDocs(p => [{ ...doc, id: Date.now() }, ...p])
+  // REPLACE WITH
+const handleDelete = (id) => {
+  apiDelete(id).catch(() => {})
+  setDocs(p => p.filter(d => d.id !== id))
+}
+const handleUploaded = (doc) => {
+  setDocs(p => [{ ...doc, id: Date.now() }, ...p])
+}
 
   return (
     <div className="flex-1 overflow-y-auto bg-bg px-8 py-7">

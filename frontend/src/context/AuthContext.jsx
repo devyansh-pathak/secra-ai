@@ -1,34 +1,53 @@
-import { createContext, useContext, useState } from 'react'
 
-// MOCK — replace with real backend calls via services/api.js
-const MOCK_USER = { name: 'Pari', role: 'Engineer', id: 'ENG-1042', lang: 'English' }
+import { createContext, useContext, useState } from 'react'
 
 const AuthContext = createContext()
 
 function getRoleFromUID(uid) {
   const prefix = uid.trim().toUpperCase().slice(0, 3)
-  const roles = {
-    ENG: 'Engineer',
-    MAG: 'Manager',
-    OFF: 'Safety Officer',
-    ADM: 'Administrator',
-  }
-  return roles[prefix] || 'Engineer'
+  return { ENG:'Engineer', MAG:'Manager', OFF:'Safety Officer', ADM:'Administrator' }[prefix] || 'Engineer'
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('secra_user')
+      return saved ? JSON.parse(saved) : null
+    } catch { return null }
+  })
 
-  const login = (uid, _pw,name) => {
-    // TODO: return api.login(uid, pw)
-    if (uid.trim()) {
-      setUser({ name: name.trim() || uid, role: getRoleFromUID(uid), id: uid, lang: 'English' })
-      return true
+  const login = async (uid, pw, name) => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: uid, password: pw, name }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        if (data.token) localStorage.setItem('secra_token', data.token)
+        localStorage.setItem('secra_user', JSON.stringify(data.user))
+        setUser(data.user)
+        return true
+      }
+      return false
+    } catch {
+      // fallback if backend offline
+      if (uid.trim()) {
+        const u = { name: name.trim() || uid, role: getRoleFromUID(uid), id: uid }
+        localStorage.setItem('secra_user', JSON.stringify(u))
+        setUser(u)
+        return true
+      }
+      return false
     }
-    return false
   }
 
-  const logout = () => setUser(null)
+  const logout = () => {
+    localStorage.removeItem('secra_token')
+    localStorage.removeItem('secra_user')
+    setUser(null)
+  }
 
   return (
     <AuthContext.Provider value={{ user, login, logout }}>

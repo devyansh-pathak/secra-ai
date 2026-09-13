@@ -23,6 +23,7 @@ export default function Chat() {
   const [uploadOpen, setUploadOpen] = useState(false)
   const [pendingImg, setPendingImg] = useState(null)
   const [convList, setConvList]     = useState([])
+  const [convMessages, setConvMessages] = useState({})
   const taRef     = useRef()
   const bottomRef = useRef()
 
@@ -43,18 +44,27 @@ export default function Chat() {
       .catch(() => {})
   }, [user?.id])
 
-  const startConv = (id) => {
-    setActiveConv(id)
-    // clicking a conversation just highlights it for now
-    // full message reload needs backend /api/v1/conversations/{id}/messages
+ const startConv = (id) => {
+  setActiveConv(id)
+  // load stored messages for this conversation
+  const saved = convMessages[id]
+  if (saved && saved.length > 0) {
+    setMessages(saved)
+  } else {
+    setMessages([])
   }
+}
 
   const newChat = () => {
-    setMessages([])
-    setActiveConv(null)
-    setText('')
-    setPendingImg(null)
+  // save current messages before clearing
+  if (activeConv && messages.length > 0) {
+    setConvMessages(p => ({ ...p, [activeConv]: messages }))
   }
+  setMessages([])
+  setActiveConv(null)
+  setText('')
+  setPendingImg(null)
+}
 
   const send = async () => {
     const t = text.trim()
@@ -73,10 +83,15 @@ export default function Chat() {
     }
 
     // add to sidebar + save to backend on first message of new chat
-    if (messages.length === 0 && t) {
+        if (messages.length === 0 && t) {
       const newId = Date.now()
       setConvList(p => [{ id: newId, title: t.slice(0, 42), group: 'Today' }, ...p])
       setActiveConv(newId)
+      // save the user message immediately
+      setConvMessages(prev => ({
+        ...prev,
+        [newId]: [{ type: 'user', text: t }]
+      }))
 
       // save to backend
       fetch(`${import.meta.env.VITE_API_URL}/api/v1/conversations`, {
@@ -90,34 +105,42 @@ export default function Chat() {
       }).catch(() => {})
     }
 
+  const saveToHistory = (newMsg) => {
+      setMessages(p => {
+        const updated = [...p, newMsg]
+        setConvMessages(prev => ({ ...prev, [activeConv]: updated }))
+        return updated
+      })
+    }
+
     setThinking(true)
     try {
       const res = await apiSend(t, user?.id || 'anonymous', String(activeConv ?? 'default'))
       setThinking(false)
       if (wasImg) {
-        setMessages(p => [...p, { type: 'img-analysis' }])
+        saveToHistory({ type: 'img-analysis' })
       } else {
-        setMessages(p => [...p, {
+        saveToHistory({
           type: 'ai',
           response: {
             text:    res.answer,
             sources: res.sources || [],
             safety:  false,
           }
-        }])
+        })
       }
     } catch {
       setThinking(false)
-      setMessages(p => [...p, {
+      saveToHistory({
         type: 'ai',
         response: {
           text:    '⚠ Could not reach the backend. Make sure server is running on port 8000.',
           sources: [],
           safety:  false,
         }
-      }])
+      })
     }
-  }
+}
 
   const onKey   = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }
   const onInput = (e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px' }
@@ -133,11 +156,21 @@ export default function Chat() {
     r.readAsDataURL(f); e.target.value = ''
   }
 
-  const handleFile = (e) => {
-    const f = e.target.files[0]; if (!f) return
+  const handleFile = async (e) => {
+  const f = e.target.files[0]; if (!f) return
+  // upload to backend first, get the server path back
+  try {
+    const form = new FormData()
+    form.append('file', f)
+    const res  = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/knowledge/ingest`, { method:'POST', body: form })
+    const data = await res.json()
+    // tell the agent the exact server path so ask_pdf can find it
+    setText(`Summarize this PDF: ${data.path}`)
+  } catch {
     setText(`I've uploaded "${f.name}". Please analyze it.`)
-    taRef.current?.focus(); e.target.value = ''
   }
+  taRef.current?.focus(); e.target.value = ''
+}
 
   const isEmpty = messages.length === 0
 

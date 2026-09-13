@@ -51,7 +51,7 @@ def general_agent():
 
 secra_team = Team(
     name="secra",
-    mode="coordinate",
+    mode="route",
     model=Ollama(id="qwen2.5:7b",keep_alive=KEEP_ALIVE),
     members=[coding_exec(),create_files(),general_agent(),rag_agent(),ocr_agent()],
     tool_call_limit=3,

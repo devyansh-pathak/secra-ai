@@ -1,34 +1,44 @@
 import { useState, useRef } from 'react'
+import { uploadDocument as apiUpload } from '../../services/api'
 import { Upload, CheckCircle } from 'lucide-react'
 import Modal from '../common/Modal'
 
-const TYPES = ['PDF','DOCX','TXT','JPG','PNG']
+const TYPES = ['PDF', 'DOCX', 'TXT', 'JPG', 'PNG']
 
 export default function DocumentUpload({ open, onClose, onUploaded }) {
-  const [phase, setPhase]       = useState('idle')
+  const [phase, setPhase] = useState('idle')
   const [fileName, setFileName] = useState('')
   const [progress, setProgress] = useState(0)
-  const [drag, setDrag]         = useState(false)
+  const [drag, setDrag] = useState(false)
   const ref = useRef()
 
   const reset = () => { setPhase('idle'); setProgress(0); setFileName('') }
   const handleClose = () => { reset(); onClose() }
 
-  const simulate = (file) => {
-    setFileName(file.name); setPhase('uploading'); setProgress(0)
-    let p = 0
-    const iv = setInterval(() => {
-      p += Math.random() * 18 + 6
-      if (p >= 100) {
-        p = 100; clearInterval(iv)
-        setTimeout(() => {
-          setPhase('done')
-          onUploaded?.({ name: file.name.replace(/\.[^.]+$/, ''), ext: file.name.split('.').pop().toLowerCase(), type:'Document', status:'processing' })
-          setTimeout(handleClose, 1800)
-        }, 300)
-      }
-      setProgress(Math.round(p))
-    }, 100)
+  const handleUpload = async (file) => {
+    if (!file) return
+
+    setFileName(file.name)
+    setPhase('uploading')
+    setProgress(0)
+
+    try {
+      setProgress(30)
+
+      const doc = await apiUpload(file)
+
+      setProgress(100)
+
+      setPhase('done')
+
+      onUploaded?.(doc)
+
+      setTimeout(handleClose, 1800)
+    } catch (error) {
+      console.error('Upload failed:', error)
+      setPhase('idle')
+      setProgress(0)
+    }
   }
 
   return (
@@ -41,7 +51,11 @@ export default function DocumentUpload({ open, onClose, onUploaded }) {
             <div onClick={() => ref.current?.click()}
               onDragOver={e => { e.preventDefault(); setDrag(true) }}
               onDragLeave={() => setDrag(false)}
-              onDrop={e => { e.preventDefault(); setDrag(false); simulate(e.dataTransfer.files[0]) }}
+              onDrop={e => {
+  e.preventDefault()
+  setDrag(false)
+  handleUpload(e.dataTransfer.files[0])
+}}
               className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all
                 ${drag ? 'border-amb bg-card3' : 'border-line hover:border-amb-dk hover:bg-card3'}`}>
               <Upload size={30} className="text-line2 mx-auto mb-3" />
@@ -51,7 +65,7 @@ export default function DocumentUpload({ open, onClose, onUploaded }) {
                 {TYPES.map(t => <span key={t} className="bg-card3 border border-line rounded px-1.5 py-0.5 text-[10px] text-tx-3">{t}</span>)}
               </div>
             </div>
-            <input ref={ref} type="file" className="hidden" accept=".pdf,.docx,.txt,.jpg,.jpeg,.png" onChange={e => simulate(e.target.files[0])} />
+            <input ref={ref} type="file" className="hidden" accept=".pdf,.docx,.txt,.jpg,.jpeg,.png" onChange={e => handleUpload(e.target.files[0])} />
           </>
         )}
 
@@ -62,7 +76,7 @@ export default function DocumentUpload({ open, onClose, onUploaded }) {
               <span className="font-medium tabular-nums text-amb">{progress}%</span>
             </div>
             <div className="h-1 bg-card3 rounded-full overflow-hidden">
-              <div className="h-full bg-amb rounded-full transition-all duration-300" style={{ width:`${progress}%` }} />
+              <div className="h-full bg-amb rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
             </div>
           </div>
         )}

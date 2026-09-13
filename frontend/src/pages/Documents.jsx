@@ -8,29 +8,29 @@ import { getDocuments, deleteDocument as apiDelete, uploadDocument as apiUpload 
 
 export default function Documents() {
   // REPLACE WITH
-const [docs, setDocs]     = useState([])
-const [query, setQuery]   = useState('')
-const [open, setOpen]     = useState(false)
-const [loading, setLoading] = useState(true)
+  const [docs, setDocs] = useState([])
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(true)
 
-useEffect(() => {
-  getDocuments()
-    .then(data => { setDocs(data); setLoading(false) })
-    .catch(() => setLoading(false))
-}, [])
+  useEffect(() => {
+    getDocuments()
+      .then(data => { setDocs(data); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
 
   const filtered = docs.filter(d =>
     d.name.toLowerCase().includes(query.toLowerCase()) ||
     d.type.toLowerCase().includes(query.toLowerCase())
   )
   // REPLACE WITH
-const handleDelete = (id) => {
-  apiDelete(id).catch(() => {})
-  setDocs(p => p.filter(d => d.id !== id))
-}
-const handleUploaded = (doc) => {
-  setDocs(p => [{ ...doc, id: Date.now() }, ...p])
-}
+  const handleDelete = (id) => {
+    apiDelete(id).catch(() => { })
+    setDocs(p => p.filter(d => d.id !== id))
+  }
+  const handleUploaded = (doc) => {
+    setDocs(p => [{ ...doc, id: Date.now() }, ...p])
+  }
 
   return (
     <div className="flex-1 overflow-y-auto bg-bg px-8 py-7">
@@ -55,16 +55,41 @@ const handleUploaded = (doc) => {
 
       <div className="bg-card border border-line rounded-lg overflow-hidden">
         <div className="grid gap-4 px-4 py-2.5 border-b border-line bg-card2 [grid-template-columns:1fr_80px_120px_68px]">
-          {['Document','Type','Status',''].map(h => (
+          {['Document', 'Type', 'Status', ''].map(h => (
             <span key={h} className="text-[10px] font-semibold tracking-wide uppercase text-tx-3">{h}</span>
           ))}
         </div>
-        {filtered.length > 0
-          ? filtered.map(d => <DocumentCard key={d.id} doc={d} onDelete={handleDelete} />)
-          : <EmptyState icon={FileText} title="No documents found"
-              description={query ? 'Try a different search term.' : 'Add trusted refinery documents so Secra AI can provide evidence-based answers.'}
-              action={<button onClick={() => setOpen(true)} className="px-4 py-2 rounded text-[12px] font-semibold bg-amb hover:bg-amb-lt text-bg transition-all shadow-amb-sm">+ Add Document</button>} />
-        }
+        {loading ? (
+          <div className="p-6 text-[12px] text-tx-3">
+            Loading documents...
+          </div>
+        ) : filtered.length > 0 ? (
+          filtered.map(d => (
+            <DocumentCard
+              key={d.id}
+              doc={d}
+              onDelete={handleDelete}
+            />
+          ))
+        ) : (
+          <EmptyState
+            icon={FileText}
+            title="No documents found"
+            description={
+              query
+                ? 'Try a different search term.'
+                : 'Add trusted refinery documents so Secra AI can provide evidence-based answers.'
+            }
+            action={
+              <button
+                onClick={() => setOpen(true)}
+                className="px-4 py-2 rounded text-[12px] font-semibold bg-amb hover:bg-amb-lt text-bg transition-all shadow-amb-sm"
+              >
+                + Add Document
+              </button>
+            }
+          />
+        )}
       </div>
 
       <DocumentUpload open={open} onClose={() => setOpen(false)} onUploaded={handleUploaded} />
